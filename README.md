@@ -20,7 +20,7 @@
    Red for "too close."
    Stepper Motor Needle Gauge: Displays proximity levels dynamically in real-time.
    Power Source: A LiPo battery powers the entire display system.
- ![Alt text](WechatIMG1434.jpeg)
+ ![Alt text](WechatIMG1433.jpeg)
 
 4. Communication System and Workflow
    The sensor unit transmits data wirelessly to the display unit via Bluetooth or similar technology. The system ensures seamless real-time updates.
@@ -28,6 +28,6 @@
    Sensor readings (proximity and temperature) are captured and processed in the DSP unit.
    The wireless transmitter sends this processed data to the display unit.
    The display unit interprets the data and activates the corresponding LEDs and gauge to provide clear visual feedback.
- ![Alt text](WechatIMG1435.jpeg)
+ ![Alt text](WechatIMG1435.jpeg)   ![Alt text](WechatIMG1434.jpeg)
 
    ![Alt text](WechatIMG1431.jpeg)
