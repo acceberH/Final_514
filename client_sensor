@@ -1,0 +1,100 @@
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <stdlib.h>
+#include <Wire.h>
+#include <Adafruit_APDS9960.h>
+
+BLEServer* pServer = NULL;
+BLECharacteristic* pCharacteristic = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+unsigned long previousMillis = 0;
+const long interval = 1000;
+
+Adafruit_APDS9960 apds; // Proximity sensor instance
+
+#define SERVICE_UUID        "302e6661-dd85-4087-a407-f3cd6cdb84f3"
+#define CHARACTERISTIC_UUID "c1e3b3c7-c7a6-4733-93fb-89091283d36c"
+
+class MyServerCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+    }
+};
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Starting BLE work!");
+
+    // Initialize APDS9960 Sensor
+    if (!apds.begin()) {
+        Serial.println("Failed to initialize APDS9960 sensor!");
+        while (1);
+    }
+    Serial.println("APDS9960 sensor initialized!");
+
+    apds.enableProximity(true);  // Enable proximity sensing
+
+    // Set up BLE
+    BLEDevice::init("XIAO_ESP32C3_Rebecca");
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    pCharacteristic = pService->createCharacteristic(
+        CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_NOTIFY
+    );
+
+    pCharacteristic->addDescriptor(new BLE2902());
+    pCharacteristic->setValue("Waiting for data...");
+    pService->start();
+
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);
+    pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
+
+    Serial.println("BLE server is ready!");
+}
+
+void loop() {
+    if (deviceConnected) {
+        unsigned long currentMillis = millis();
+        if (currentMillis - previousMillis >= interval) {
+            previousMillis = currentMillis;
+
+            uint8_t proximity = apds.readProximity(); // Read proximity from APDS9960
+            Serial.print("Sending Proximity Value: ");
+            Serial.println(proximity);
+
+            pCharacteristic->setValue(&proximity, sizeof(proximity)); // Send raw byte
+            pCharacteristic->notify(); // Notify client
+            Serial.println("Sent proximity data via BLE.");
+        }
+    }
+
+    // Handle BLE disconnection/reconnection
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(500);
+        pServer->startAdvertising();
+        Serial.println("Restarted advertising.");
+        oldDeviceConnected = deviceConnected;
+    }
+
+    if (deviceConnected && !oldDeviceConnected) {
+        oldDeviceConnected = deviceConnected;
+    }
+
+    delay(100);
+}
